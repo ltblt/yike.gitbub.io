@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一可特工的周末大冒险</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', 'Microsoft YaHei', sans-serif;
+            background-color: #f0f8ff;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        h1 { color: #ff6b81; text-shadow: 2px 2px #ffeaa7; }
+        #game-container {
+            background-color: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .menu-btn {
+            display: block;
+            width: 80%;
+            margin: 15px auto;
+            padding: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            background-color: #70a1ff;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        .menu-btn:hover { transform: scale(1.05); background-color: #1e90ff; }
+        .menu-btn:nth-child(2) { background-color: #2ed573; }
+        .menu-btn:nth-child(2):hover { background-color: #2ecc71; }
+        .menu-btn:nth-child(3) { background-color: #ffa502; }
+        .menu-btn:nth-child(3):hover { background-color: #ff7f50; }
+
+        /* Battery Styles */
+        .battery-box {
+            width: 150px;
+            height: 60px;
+            border: 5px solid #333;
+            border-radius: 10px;
+            margin: 20px auto;
+            position: relative;
+            padding: 2px;
+        }
+        .battery-box::after {
+            content: '';
+            position: absolute;
+            right: -15px;
+            top: 15px;
+            width: 10px;
+            height: 30px;
+            background-color: #333;
+            border-radius: 0 5px 5px 0;
+        }
+        .battery-level { height: 100%; border-radius: 5px; transition: width 0.5s; }
+
+        /* General Game Elements */
+        .question-title { font-size: 24px; margin: 20px 0; color: #3742fa; }
+        .options-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; }
+        .option-btn {
+            font-size: 22px;
+            padding: 10px 20px;
+            background-color: #f1f2f6;
+            border: 3px solid #dfe4ea;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .option-btn:hover { border-color: #70a1ff; background-color: #eccc68; }
+        
+        /* Phrase Builder Styles */
+        .word-bank { min-height: 60px; background-color: #f1f2f6; border-radius: 10px; padding: 10px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center;}
+        .word-card { background-color: white; border: 2px solid #ff7f50; padding: 10px 15px; border-radius: 10px; font-size: 20px; cursor: pointer; box-shadow: 2px 2px #ff7f50; font-weight:bold;}
+        .target-area { min-height: 60px; border: 3px dashed #7bed9f; border-radius: 10px; padding: 10px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center;}
+
+        #feedback { font-size: 28px; margin-top: 20px; font-weight: bold; min-height: 40px;}
+        .hidden { display: none; }
+        .back-btn { margin-top: 30px; background-color: #ff4757; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+    <h1>🌟 一可的周末大冒险 🌟</h1>
+    <div id="game-container">
+        
+        <!-- 主菜单 -->
+        <div id="menu">
+            <h2>请选择你要挑战的任务，特工！</h2>
+            <button class="menu-btn" onclick="startGame(1)">🔋 关卡 1：电量恢复仪 (副词)</button>
+            <button class="menu-btn" onclick="startGame(2)">🕵️ 关卡 2：抓捕调皮字母 (拼写)</button>
+            <button class="menu-btn" onclick="startGame(3)">🪄 关卡 3：魔法句子拼拼乐 (词组)</button>
+        </div>
+
+        <!-- 游戏区域 -->
+        <div id="game-area" class="hidden">
+            <h2 id="level-title">关卡</h2>
+            <div id="question-area"></div>
+            <div id="options-area" class="options-container"></div>
+            <div id="feedback"></div>
+            <button id="next-btn" class="menu-btn hidden" onclick="nextQuestion()">下一关 ➡️</button>
+            <button class="back-btn" onclick="showMenu()">🏠 返回主菜单</button>
+        </div>
+
+    </div>
+
+    <script>
+        // 自动发音功能
+        function speakWord(text) {
+            if ('speechSynthesis' in window) {
+                let msg = new SpeechSynthesisUtterance(text);
+                msg.lang = 'en-US';
+                window.speechSynthesis.speak(msg);
+            }
+        }
+
+        // 题库数据
+        const data = {
+            level1:[
+                { word: 'always', zh: '一直', percent: '100%', color: '#ff4757' },
+                { word: 'usually', zh: '经常', percent: '80%', color: '#ffa502' },
+                { word: 'often', zh: '通常', percent: '60%', color: '#eccc68' },
+                { word: 'sometimes', zh: '有时', percent: '30%', color: '#2ed573' },
+                { word: 'seldom', zh: '几乎不', percent: '10%', color: '#1e90ff' },
+                { word: 'never', zh: '从不', percent: '0%', color: '#a4b0be' }
+            ],
+            level2:[
+                { display: 's _ i', missing: 'k', word: 'ski', zh: '⛷️ 滑雪', options: ['k', 'c', 't'] },
+                { display: 's _ a t e', missing: 'k', word: 'skate', zh: '⛸️ 滑冰', options: ['c', 'k', 'p'] },
+                { display: 'f _ r m', missing: 'a', word: 'farm', zh: '🚜 农场', options: ['o', 'e', 'a'] },
+                { display: 'f _ l m', missing: 'i', word: 'film', zh: '🎬 电影', options:['i', 'l', 'e'] },
+                { display: 'c h _ l d', missing: 'i', word: 'child', zh: '👶 孩子', options: ['a', 'o', 'i'] },
+                { display: 'a l b _ m', missing: 'u', word: 'album', zh: '📔 相册', options: ['a', 'u', 'e'] }
+            ],
+            level3:[
+                { zh: '看望爷爷奶奶', phrase: 'visit Grandma and Grandpa', words:['Grandma', 'visit', 'Grandpa', 'and'] },
+                { zh: '喂奶牛', phrase: 'feed the cows', words: ['cows', 'feed', 'the'] },
+                { zh: '看电影', phrase: 'see a film', words: ['a', 'film', 'see'] },
+                { zh: '过得愉快', phrase: 'have a good time', words: ['good', 'have', 'time', 'a'] },
+                { zh: '拍全家福', phrase: 'take a family photo', words:['family', 'take', 'photo', 'a'] }
+            ]
+        };
+
+        let currentLevel = 0;
+        let currentQuestionIndex = 0;
+        let currentData = [];
+        let selectedWords =[]; // 用于第三关
+
+        function showMenu() {
+            document.getElementById('menu').classList.remove('hidden');
+            document.getElementById('game-area').classList.add('hidden');
+            document.getElementById('feedback').innerText = '';
+        }
+
+        function startGame(level) {
+            currentLevel = level;
+            currentQuestionIndex = 0;
+            currentData = [...data['level' + level]];
+            // 随机打乱题目顺序
+            currentData.sort(() => Math.random() - 0.5);
+            
+            document.getElementById('menu').classList.add('hidden');
+            document.getElementById('game-area').classList.remove('hidden');
+            
+            if(level === 1) document.getElementById('level-title').innerText = '🔋 关卡 1：恢复电量仪';
+            if(level === 2) document.getElementById('level-title').innerText = '🕵️ 关卡 2：拯救调皮字母';
+            if(level === 3) document.getElementById('level-title').innerText = '🪄 关卡 3：魔法句子拼拼乐';
+
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            let qArea = document.getElementById('question-area');
+            let optArea = document.getElementById('options-area');
+            let feedback = document.getElementById('feedback');
+            let nextBtn = document.getElementById('next-btn');
+            
+            feedback.innerText = '';
+            nextBtn.classList.add('hidden');
+            optArea.innerHTML = '';
+            qArea.innerHTML = '';
+
+            if (currentQuestionIndex >= currentData.length) {
+                qArea.innerHTML = `<h2 style="color:#2ed573">🎉 太棒了，一可！你成功通关了本任务！🌟🌟🌟</h2>`;
+                return;
+            }
+
+            let q = currentData[currentQuestionIndex];
+
+            if (currentLevel === 1) {
+                // 第一关：电量
+                qArea.innerHTML = `
+                    <div class="question-title">一可，"<b>${q.zh}</b>" 对应的电量是多少？</div>
+                    <div class="battery-box">
+                        <div class="battery-level" style="width: ${q.percent}; background-color: ${q.color}"></div>
+                    </div>
+                `;
+                // 混淆选项
+                let options = [...data.level1].map(d => d.word).sort(() => Math.random() - 0.5);
+                options.forEach(opt => {
+                    let btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.innerText = opt;
+                    btn.onclick = () => checkAnswer1(opt, q.word, btn);
+                    optArea.appendChild(btn);
+                });
+                speakWord(q.word); // 预读正确的词组发音准备（可选，这里为了不剧透先不自动读，答对再读）
+
+            } else if (currentLevel === 2) {
+                // 第二关：拼写
+                qArea.innerHTML = `
+                    <div class="question-title">${q.zh}</div>
+                    <h1 style="font-size: 50px; letter-spacing: 10px; color:#3742fa;">${q.display}</h1>
+                    <p>哪个字母跑丢了？</p>
+                `;
+                q.options.forEach(opt => {
+                    let btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.innerText = opt;
+                    btn.onclick = () => checkAnswer2(opt, q, btn);
+                    optArea.appendChild(btn);
+                });
+                speakWord(q.word);
+
+            } else if (currentLevel === 3) {
+                // 第三关：词组拼装
+                selectedWords =[];
+                qArea.innerHTML = `
+                    <div class="question-title">目标：<b>${q.zh}</b></div>
+                    <div id="target-area" class="target-area"></div>
+                `;
+                
+                let wordBank = document.createElement('div');
+                wordBank.id = 'word-bank';
+                wordBank.className = 'word-bank';
+                
+                q.words.forEach(w => {
+                    let span = document.createElement('div');
+                    span.className = 'word-card';
+                    span.innerText = w;
+                    span.onclick = () => selectWord(span, w, q.phrase);
+                    wordBank.appendChild(span);
+                });
+                optArea.appendChild(wordBank);
+                speakWord(q.phrase);
+            }
+        }
+
+        // 第一关检查
+        function checkAnswer1(selected, correct, btn) {
+            speakWord(selected);
+            let feedback = document.getElementById('feedback');
+            if (selected === correct) {
+                btn.style.backgroundColor = '#2ed573';
+                btn.style.color = 'white';
+                feedback.innerHTML = '✅ 太聪明了！答对啦！';
+                feedback.style.color = '#2ed573';
+                document.getElementById('next-btn').classList.remove('hidden');
+                disableOptions();
+            } else {
+                btn.style.backgroundColor = '#ff4757';
+                btn.style.color = 'white';
+                feedback.innerHTML = '❌ 哎呀，不对哦，再试一次！';
+                feedback.style.color = '#ff4757';
+                setTimeout(() => { btn.style.backgroundColor = ''; btn.style.color = ''; }, 800);
+            }
+        }
+
+        // 第二关检查
+        function checkAnswer2(selected, q, btn) {
+            let feedback = document.getElementById('feedback');
+            if (selected === q.missing) {
+                speakWord(q.word);
+                btn.style.backgroundColor = '#2ed573';
+                btn.style.color = 'white';
+                document.querySelector('#question-area h1').innerText = q.word; // 显示完整单词
+                feedback.innerHTML = '✅ 找回字母啦！一可真棒！';
+                feedback.style.color = '#2ed573';
+                document.getElementById('next-btn').classList.remove('hidden');
+                disableOptions();
+            } else {
+                btn.style.backgroundColor = '#ff4757';
+                btn.style.color = 'white';
+                feedback.innerHTML = '❌ 不是这个字母哦，再找找看！';
+                feedback.style.color = '#ff4757';
+                setTimeout(() => { btn.style.backgroundColor = ''; btn.style.color = ''; }, 800);
+            }
+        }
+
+        // 第三关选词逻辑
+        function selectWord(element, word, targetPhrase) {
+            speakWord(word);
+            document.getElementById('target-area').appendChild(element);
+            selectedWords.push(word);
+            element.onclick = null; // 点击后不可再点（其实可以在目标区域点击退回，这里为简化二年级操作，做单向）
+
+            let currentPhrase = selectedWords.join(' ');
+            let targetArray = targetPhrase.split(' ');
+
+            // 检查当前进度对不对
+            let isCorrectSoFar = true;
+            for(let i=0; i<selectedWords.length; i++){
+                if(selectedWords[i] !== targetArray[i]){
+                    isCorrectSoFar = false; break;
+                }
+            }
+
+            let feedback = document.getElementById('feedback');
+            if (!isCorrectSoFar) {
+                feedback.innerHTML = '❌ 顺序错啦，重来一次吧！';
+                feedback.style.color = '#ff4757';
+                setTimeout(() => {
+                    loadQuestion(); // 重新加载这题
+                }, 1000);
+            } else if (currentPhrase === targetPhrase) {
+                feedback.innerHTML = '✅ 魔法句子拼好了！完美！';
+                feedback.style.color = '#2ed573';
+                document.getElementById('next-btn').classList.remove('hidden');
+                speakWord(targetPhrase);
+            }
+        }
+
+        function disableOptions() {
+            let btns = document.querySelectorAll('.option-btn');
+            btns.forEach(b => b.onclick = null);
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            loadQuestion();
+        }
+
+    </script>
+</body>
+</html>
